@@ -222,16 +222,13 @@
   </div>
 </div>
 
-<!-- STEP 2: Resume info + generate questions -->
+<!-- STEP 2: Resume info + generating questions -->
 <div class="card section" id="sec-info">
   <h2>Resume Parsed</h2>
   <div class="info-grid" id="info-grid"></div>
   <div style="margin-top:1.25rem; display:flex; gap:0.75rem; align-items:center;">
-    <button class="btn btn-primary" id="btn-generate">
-      <span id="gen-spinner" style="display:none" class="spinner"></span>
-      Generate Interview Questions
-    </button>
-    <span class="status-msg" id="gen-status"></span>
+    <span class="spinner" id="gen-spinner"></span>
+    <span class="status-msg" id="gen-status">Fetching reference material & generating questions…</span>
   </div>
 </div>
 
@@ -273,7 +270,6 @@
   const uploadStatus = document.getElementById('upload-status');
   const uploadSpinner= document.getElementById('upload-spinner');
 
-  const btnGenerate  = document.getElementById('btn-generate');
   const genStatus    = document.getElementById('gen-status');
   const genSpinner   = document.getElementById('gen-spinner');
   const infoGrid     = document.getElementById('info-grid');
@@ -283,10 +279,6 @@
   const answerInput  = document.getElementById('answer-input');
   const btnSkip      = document.getElementById('btn-skip');
   const btnSubmit    = document.getElementById('btn-submit');
-  const submitSpinner= document.getElementById('submit-spinner');
-  const inlineEval   = document.getElementById('inline-eval-container');
-  const btnNextRow   = document.getElementById('btn-next-row');
-  const btnNext      = document.getElementById('btn-next');
   const progressBar  = document.getElementById('progress-bar');
 
   const avgScoreBox  = document.getElementById('avg-score-box');
@@ -361,6 +353,7 @@
       resumeData = await res.json();
       renderInfoGrid();
       show('sec-info');
+      generateQuestions();
     } catch (e) {
       uploadStatus.textContent = '❌ ' + e.message;
     } finally {
@@ -377,9 +370,9 @@
     `;
   }
 
-  // Generate questions
-  btnGenerate.addEventListener('click', async () => {
-    setLoading(genSpinner, btnGenerate, true);
+  // Generate questions (called automatically after upload)
+  async function generateQuestions() {
+    genSpinner.style.display = 'inline-block';
     genStatus.textContent = 'Fetching reference material & generating questions…';
     try {
       const res = await fetch(`${API}/generate-questions`, {
@@ -395,12 +388,10 @@
       renderQuestion();
       show('sec-qa');
     } catch (e) {
+      genSpinner.style.display = 'none';
       genStatus.textContent = '❌ ' + e.message;
-    } finally {
-      setLoading(genSpinner, btnGenerate, false);
-      genStatus.textContent = '';
     }
-  });
+  }
 
   // Q&A flow
   function renderQuestion() {
@@ -409,8 +400,6 @@
     qCounter.textContent = `Question ${currentQ + 1} of ${questions.length}`;
     qText.textContent = questions[currentQ];
     answerInput.value = '';
-    inlineEval.innerHTML = '';
-    btnNextRow.style.display = 'none';
     answerInput.disabled = false;
     btnSubmit.disabled = false;
     btnSkip.disabled = false;
@@ -427,8 +416,6 @@
     qaPairs.push({ question: questions[currentQ], answer });
     advanceOrFinish();
   });
-
-  btnNext.addEventListener('click', advanceOrFinish);
 
   async function advanceOrFinish() {
     currentQ++;
