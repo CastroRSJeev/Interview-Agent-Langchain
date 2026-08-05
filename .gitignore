@@ -1,6 +1,6 @@
 .env
-.corpus/
-.corpus_cache/
-.resumes
-._pycache_
-.myenv
+corpus/
+corpus_cache/
+resumes/
+__pycache__/
+myenv/
