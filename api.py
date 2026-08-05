@@ -44,7 +44,7 @@ llm_gemini = ChatGoogleGenerativeAI(
     google_api_key=os.getenv("GEMINI_API_KEY"),
     temperature=0.7,
 )
-llm_extractor = ChatOllama(model="llama3.2:latest", temperature=0, base_url="http://localhost:11434")
+llm_extractor = llm_gemini
 
 CORPUS_DIR = "corpus"
 MIN_CONTENT_LEN = 300
