@@ -251,6 +251,30 @@ app.add_middleware(
 
 
 # ---------------------------------------------------------------------------
+# Input guardrail
+# ---------------------------------------------------------------------------
+
+_INJECTION_PATTERN = re.compile(
+    r"(ignore (previous|all|above)|disregard|forget (previous|all)|new instruction|"
+    r"you are now|act as|pretend (you are|to be)|jailbreak|"
+    r"<script|javascript:|on\w+\s*=|eval\(|exec\()",
+    re.IGNORECASE,
+)
+
+MAX_ANSWER_LENGTH = 2000
+
+
+def validate_answer(answer: str) -> str:
+    if not answer or not answer.strip():
+        raise HTTPException(status_code=400, detail="Answer cannot be empty.")
+    if len(answer) > MAX_ANSWER_LENGTH:
+        raise HTTPException(status_code=400, detail=f"Answer exceeds {MAX_ANSWER_LENGTH} character limit.")
+    if _INJECTION_PATTERN.search(answer):
+        raise HTTPException(status_code=400, detail="Answer contains disallowed content.")
+    return answer.strip()
+
+
+# ---------------------------------------------------------------------------
 # Request / Response models
 # ---------------------------------------------------------------------------
 
@@ -323,14 +347,15 @@ async def generate_questions(payload: dict):
 
 @app.post("/submit-answer")
 async def submit_answer(req: AnswerRequest):
-    evaluation = await asyncio.to_thread(evaluate_answer, req.tech_name, req.question, req.answer)
-    return {"question": req.question, "answer": req.answer, "evaluation": evaluation}
+    answer = validate_answer(req.answer)
+    evaluation = await asyncio.to_thread(evaluate_answer, req.tech_name, req.question, answer)
+    return {"question": req.question, "answer": answer, "evaluation": evaluation}
 
 
 @app.post("/evaluate-all")
 async def evaluate_all(req: EvaluateAllRequest):
     tasks = [
-        asyncio.to_thread(evaluate_answer, req.tech_name, pair["question"], pair["answer"])
+        asyncio.to_thread(evaluate_answer, req.tech_name, pair["question"], validate_answer(pair["answer"]))
         for pair in req.qa_pairs
     ]
     evaluations = await asyncio.gather(*tasks)

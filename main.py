@@ -47,10 +47,10 @@ def invoke_with_groq_fallback(prompt_value):
             return llm_gemini.invoke(prompt_value)
         raise
 # Deterministic model for small extraction tasks (tech name, years of experience)
-llm_extractor = ChatOllama(
-    model="llama3.2:latest",
+llm_extractor = ChatGoogleGenerativeAI(
+    model=os.getenv('GEMINI_MODEL', 'gemini-flash-latest'),
+    google_api_key=os.getenv('GEMINI_API_KEY'),
     temperature=0,
-    base_url="http://localhost:11434"
 )
 
 resume = {"projects": get_projects(), "jobrole": get_jobrole()}
@@ -317,13 +317,38 @@ result = question_generation_chain.invoke({
 print("\n" + result.content)
 questions = parse_questions(result.content)
 
+_INJECTION_PATTERN = re.compile(
+    r"(ignore (previous|all|above)|disregard|forget (previous|all)|new instruction|"
+    r"you are now|act as|pretend (you are|to be)|jailbreak|"
+    r"<script|javascript:|on\w+\s*=|eval\(|exec\()",
+    re.IGNORECASE,
+)
+MAX_ANSWER_LENGTH = 2000
+
+
+def validate_answer_cli(answer: str) -> str | None:
+    if not answer or not answer.strip():
+        print("  [!] Answer cannot be empty. Skipping.")
+        return None
+    if len(answer) > MAX_ANSWER_LENGTH:
+        print(f"  [!] Answer exceeds {MAX_ANSWER_LENGTH} characters. Skipping.")
+        return None
+    if _INJECTION_PATTERN.search(answer):
+        print("  [!] Answer contains disallowed content. Skipping.")
+        return None
+    return answer.strip()
+
+
 print("\nEnter your answer for each question (or type 'skip' to skip).\n")
 qa_pairs = []
 for i, q in enumerate(questions, 1):
     print(f"\nQ{i}: {q}")
     answer = input("Your answer: ").strip()
-    if answer.lower() != "skip":
-        qa_pairs.append({"question": q, "answer": answer})
+    if answer.lower() == "skip":
+        continue
+    clean = validate_answer_cli(answer)
+    if clean:
+        qa_pairs.append({"question": q, "answer": clean})
 
 if qa_pairs:
     results = evaluate_interview(tech_name, qa_pairs)
