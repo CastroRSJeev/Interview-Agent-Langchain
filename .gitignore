@@ -2,4 +2,5 @@
 .corpus/
 .corpus_cache/
 .resumes
-
+._pycache_
+.myenv

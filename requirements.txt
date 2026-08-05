@@ -10,7 +10,6 @@ langchain-text-splitters
 langchain-ollama
 langchain-groq
 langchain-google-genai
-
 faiss-cpu
 tavily-python
 pymupdf
