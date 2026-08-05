@@ -64,12 +64,17 @@ def invoke_with_groq_fallback(prompt_value):
 # Helpers (sync — run in threadpool via asyncio.to_thread)
 # ---------------------------------------------------------------------------
 
+def _get_content(msg) -> str:
+    c = msg.content
+    return (c[0].get("text", "") if isinstance(c, list) and c else c) or ""
+
+
 def _extract_tech_name(user_input: str) -> str:
     prompt = PromptTemplate(
         input_variables=["input"],
         template='Extract ONLY the technology/framework/skill name from: "{input}". Respond with ONLY the name.',
     )
-    return (prompt | llm_extractor | (lambda x: x.content)).invoke({"input": user_input}).strip()
+    return (prompt | llm_extractor | _get_content).invoke({"input": user_input}).strip()
 
 
 def _extract_years(user_input: str) -> int:
@@ -77,7 +82,7 @@ def _extract_years(user_input: str) -> int:
         input_variables=["input"],
         template='Extract ONLY the number of years of experience from: "{input}". Respond with digits only. If none, respond "0".',
     )
-    raw = (prompt | llm_extractor | (lambda x: x.content)).invoke({"input": user_input}).strip()
+    raw = (prompt | llm_extractor | _get_content).invoke({"input": user_input}).strip()
     match = re.search(r"\d+", raw)
     return int(match.group()) if match else 0
 
