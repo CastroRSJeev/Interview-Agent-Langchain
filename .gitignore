@@ -1,0 +1,5 @@
+.env
+.corpus/
+.corpus_cache/
+.resumes
+

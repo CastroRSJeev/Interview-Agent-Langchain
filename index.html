@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interview Agent</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: #7c3aed;
+      margin-bottom: 0.25rem;
+      letter-spacing: -0.5px;
+    }
+
+    .subtitle { color: #64748b; font-size: 0.9rem; margin-bottom: 2rem; }
+
+    .card {
+      background: #1e2130;
+      border: 1px solid #2d3148;
+      border-radius: 12px;
+      padding: 1.75rem;
+      width: 100%;
+      max-width: 760px;
+      margin-bottom: 1.5rem;
+    }
+
+    .card h2 { font-size: 1rem; font-weight: 600; color: #a78bfa; margin-bottom: 1rem; }
+
+    /* Upload zone */
+    .upload-zone {
+      border: 2px dashed #3d4268;
+      border-radius: 8px;
+      padding: 2.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .upload-zone:hover, .upload-zone.drag-over {
+      border-color: #7c3aed;
+      background: #1a1d2e;
+    }
+    .upload-zone input { display: none; }
+    .upload-zone .icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+    .upload-zone p { color: #94a3b8; font-size: 0.9rem; }
+    .upload-zone .file-name { color: #a78bfa; font-weight: 600; margin-top: 0.5rem; font-size: 0.9rem; }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.6rem 1.4rem;
+      border-radius: 8px;
+      border: none;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-primary { background: #7c3aed; color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: #6d28d9; }
+    .btn-secondary { background: #2d3148; color: #e2e8f0; }
+    .btn-secondary:hover:not(:disabled) { background: #363b5e; }
+
+    /* Resume info */
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+    .info-item { background: #161824; border-radius: 8px; padding: 0.75rem 1rem; }
+    .info-item .label { font-size: 0.72rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem; }
+    .info-item .value { font-size: 0.95rem; color: #e2e8f0; font-weight: 500; }
+
+    /* Progress */
+    .progress-bar-wrap { background: #161824; border-radius: 99px; height: 6px; margin: 1rem 0; }
+    .progress-bar { height: 6px; border-radius: 99px; background: #7c3aed; transition: width 0.4s ease; }
+
+    .question-counter { font-size: 0.8rem; color: #64748b; margin-bottom: 0.5rem; }
+    .question-text { font-size: 1rem; color: #e2e8f0; line-height: 1.6; margin-bottom: 1rem; font-weight: 500; }
+
+    textarea {
+      width: 100%;
+      background: #161824;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      color: #e2e8f0;
+      font-size: 0.9rem;
+      padding: 0.75rem 1rem;
+      resize: vertical;
+      min-height: 110px;
+      font-family: inherit;
+      transition: border-color 0.2s;
+      outline: none;
+    }
+    textarea:focus { border-color: #7c3aed; }
+
+    .btn-row { display: flex; gap: 0.75rem; margin-top: 1rem; justify-content: flex-end; }
+
+    /* Inline eval */
+    .inline-eval {
+      margin-top: 1rem;
+      background: #161824;
+      border-radius: 8px;
+      padding: 1rem;
+      border-left: 3px solid #7c3aed;
+    }
+    .inline-eval .verdict {
+      font-weight: 700;
+      font-size: 0.85rem;
+      margin-bottom: 0.5rem;
+    }
+    .verdict-strong { color: #34d399; }
+    .verdict-adequate { color: #fbbf24; }
+    .verdict-weak { color: #f87171; }
+
+    .scores { display: flex; gap: 1rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
+    .score-pill {
+      background: #1e2130;
+      border-radius: 6px;
+      padding: 0.25rem 0.6rem;
+      font-size: 0.78rem;
+      color: #94a3b8;
+    }
+    .score-pill span { color: #e2e8f0; font-weight: 600; }
+
+    .feedback-text { font-size: 0.85rem; color: #94a3b8; line-height: 1.5; }
+
+    .missing-list, .error-list {
+      margin-top: 0.5rem;
+      padding-left: 1.1rem;
+      font-size: 0.82rem;
+      color: #f87171;
+    }
+    .missing-list { color: #fbbf24; }
+
+    /* Final report */
+    .report-item {
+      background: #161824;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border-left: 3px solid #2d3148;
+    }
+    .report-item.strong { border-left-color: #34d399; }
+    .report-item.adequate { border-left-color: #fbbf24; }
+    .report-item.weak { border-left-color: #f87171; }
+
+    .report-q { font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.3rem; }
+    .report-a { font-size: 0.85rem; color: #cbd5e1; margin-bottom: 0.75rem; font-style: italic; }
+
+    .avg-score {
+      text-align: center;
+      padding: 1.5rem;
+      background: #161824;
+      border-radius: 10px;
+      margin-bottom: 1.5rem;
+    }
+    .avg-score .big { font-size: 3rem; font-weight: 800; color: #7c3aed; }
+    .avg-score .label { color: #64748b; font-size: 0.85rem; margin-top: 0.25rem; }
+
+    /* Spinner */
+    .spinner {
+      display: inline-block;
+      width: 18px; height: 18px;
+      border: 2px solid #3d4268;
+      border-top-color: #7c3aed;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .status-msg { font-size: 0.85rem; color: #64748b; margin-top: 0.75rem; min-height: 1.2em; }
+
+    /* Sections visibility */
+    .section { display: none; }
+    .section.active { display: block; }
+
+    @media (max-width: 500px) {
+      .info-grid { grid-template-columns: 1fr; }
+      .scores { gap: 0.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+<h1>🎯 Interview Agent</h1>
+<p class="subtitle">Upload your resume, answer questions, get evaluated.</p>
+
+<!-- STEP 1: Upload -->
+<div class="card section active" id="sec-upload">
+  <h2>Upload Resume</h2>
+  <div class="upload-zone" id="upload-zone">
+    <input type="file" id="file-input" accept=".pdf" />
+    <div class="icon">📄</div>
+    <p>Drag & drop your PDF resume here, or <strong>click to browse</strong></p>
+    <div class="file-name" id="file-name-display"></div>
+  </div>
+  <div style="margin-top:1rem; display:flex; gap:0.75rem; align-items:center;">
+    <button class="btn btn-primary" id="btn-upload" disabled>
+      <span id="upload-spinner" style="display:none" class="spinner"></span>
+      Analyse Resume
+    </button>
+    <span class="status-msg" id="upload-status"></span>
+  </div>
+</div>
+
+<!-- STEP 2: Resume info + generate questions -->
+<div class="card section" id="sec-info">
+  <h2>Resume Parsed</h2>
+  <div class="info-grid" id="info-grid"></div>
+  <div style="margin-top:1.25rem; display:flex; gap:0.75rem; align-items:center;">
+    <button class="btn btn-primary" id="btn-generate">
+      <span id="gen-spinner" style="display:none" class="spinner"></span>
+      Generate Interview Questions
+    </button>
+    <span class="status-msg" id="gen-status"></span>
+  </div>
+</div>
+
+<!-- STEP 3: Q&A -->
+<div class="card section" id="sec-qa">
+  <h2>Interview</h2>
+  <div class="progress-bar-wrap"><div class="progress-bar" id="progress-bar" style="width:0%"></div></div>
+  <div class="question-counter" id="q-counter"></div>
+  <div class="question-text" id="q-text"></div>
+  <textarea id="answer-input" placeholder="Type your answer here…"></textarea>
+  <div class="btn-row">
+    <button class="btn btn-secondary" id="btn-skip">Skip</button>
+    <button class="btn btn-primary" id="btn-submit">Submit Answer</button>
+  </div>
+</div>
+
+<!-- STEP 4: Report -->
+<div class="card section" id="sec-report">
+  <h2>Evaluation Report</h2>
+  <div class="avg-score" id="avg-score-box"></div>
+  <div id="report-body"></div>
+  <button class="btn btn-secondary" id="btn-restart" style="margin-top:0.5rem;">Start Over</button>
+</div>
+
+<script>
+  const API = '';  // same origin
+
+  // State
+  let resumeData = {};
+  let questions = [];
+  let currentQ = 0;
+  let qaPairs = [];
+
+  // Elements
+  const uploadZone   = document.getElementById('upload-zone');
+  const fileInput    = document.getElementById('file-input');
+  const fileNameDisp = document.getElementById('file-name-display');
+  const btnUpload    = document.getElementById('btn-upload');
+  const uploadStatus = document.getElementById('upload-status');
+  const uploadSpinner= document.getElementById('upload-spinner');
+
+  const btnGenerate  = document.getElementById('btn-generate');
+  const genStatus    = document.getElementById('gen-status');
+  const genSpinner   = document.getElementById('gen-spinner');
+  const infoGrid     = document.getElementById('info-grid');
+
+  const qCounter     = document.getElementById('q-counter');
+  const qText        = document.getElementById('q-text');
+  const answerInput  = document.getElementById('answer-input');
+  const btnSkip      = document.getElementById('btn-skip');
+  const btnSubmit    = document.getElementById('btn-submit');
+  const submitSpinner= document.getElementById('submit-spinner');
+  const inlineEval   = document.getElementById('inline-eval-container');
+  const btnNextRow   = document.getElementById('btn-next-row');
+  const btnNext      = document.getElementById('btn-next');
+  const progressBar  = document.getElementById('progress-bar');
+
+  const avgScoreBox  = document.getElementById('avg-score-box');
+  const reportBody   = document.getElementById('report-body');
+  const btnRestart   = document.getElementById('btn-restart');
+
+  // Helpers
+  function show(id) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  function setLoading(spinner, btn, loading) {
+    spinner.style.display = loading ? 'inline-block' : 'none';
+    btn.disabled = loading;
+  }
+
+  function verdictClass(v) {
+    if (!v) return '';
+    const l = v.toLowerCase();
+    if (l === 'strong') return 'verdict-strong';
+    if (l === 'adequate') return 'verdict-adequate';
+    return 'verdict-weak';
+  }
+
+  function renderInlineEval(ev) {
+    const missingHtml = (ev.missing_points || []).length
+      ? `<ul class="missing-list">${ev.missing_points.map(m => `<li>${m}</li>`).join('')}</ul>` : '';
+    const errHtml = (ev.factual_errors || []).length
+      ? `<ul class="error-list">${ev.factual_errors.map(e => `<li>${e}</li>`).join('')}</ul>` : '';
+    return `
+      <div class="inline-eval">
+        <div class="verdict ${verdictClass(ev.verdict)}">Verdict: ${ev.verdict}</div>
+        <div class="scores">
+          <div class="score-pill">Accuracy <span>${ev.technical_accuracy}/5</span></div>
+          <div class="score-pill">Completeness <span>${ev.completeness}/5</span></div>
+          <div class="score-pill">Clarity <span>${ev.clarity}/5</span></div>
+        </div>
+        <div class="feedback-text">${ev.feedback || ''}</div>
+        ${missingHtml}${errHtml}
+      </div>`;
+  }
+
+  // Upload zone
+  uploadZone.addEventListener('click', () => fileInput.click());
+  uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+  uploadZone.addEventListener('drop', e => {
+    e.preventDefault();
+    uploadZone.classList.remove('drag-over');
+    const f = e.dataTransfer.files[0];
+    if (f && f.type === 'application/pdf') { fileInput.files = e.dataTransfer.files; handleFileSelect(f); }
+  });
+  fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFileSelect(fileInput.files[0]); });
+
+  function handleFileSelect(f) {
+    fileNameDisp.textContent = f.name;
+    btnUpload.disabled = false;
+  }
+
+  // Upload resume
+  btnUpload.addEventListener('click', async () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+    setLoading(uploadSpinner, btnUpload, true);
+    uploadStatus.textContent = 'Parsing resume…';
+    const form = new FormData();
+    form.append('file', file);
+    try {
+      const res = await fetch(`${API}/upload-resume`, { method: 'POST', body: form });
+      if (!res.ok) throw new Error((await res.json()).detail || 'Upload failed');
+      resumeData = await res.json();
+      renderInfoGrid();
+      show('sec-info');
+    } catch (e) {
+      uploadStatus.textContent = '❌ ' + e.message;
+    } finally {
+      setLoading(uploadSpinner, btnUpload, false);
+      uploadStatus.textContent = '';
+    }
+  });
+
+  function renderInfoGrid() {
+    infoGrid.innerHTML = `
+      <div class="info-item"><div class="label">Technology</div><div class="value">${resumeData.tech_name}</div></div>
+      <div class="info-item"><div class="label">Experience</div><div class="value">${resumeData.experience_label}</div></div>
+      <div class="info-item" style="grid-column:1/-1"><div class="label">Job Role</div><div class="value">${resumeData.jobrole}</div></div>
+    `;
+  }
+
+  // Generate questions
+  btnGenerate.addEventListener('click', async () => {
+    setLoading(genSpinner, btnGenerate, true);
+    genStatus.textContent = 'Fetching reference material & generating questions…';
+    try {
+      const res = await fetch(`${API}/generate-questions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tech_name: resumeData.tech_name, projects: resumeData.projects, years: resumeData.years }),
+      });
+      if (!res.ok) throw new Error((await res.json()).detail || 'Generation failed');
+      const data = await res.json();
+      questions = data.questions;
+      currentQ = 0;
+      qaPairs = [];
+      renderQuestion();
+      show('sec-qa');
+    } catch (e) {
+      genStatus.textContent = '❌ ' + e.message;
+    } finally {
+      setLoading(genSpinner, btnGenerate, false);
+      genStatus.textContent = '';
+    }
+  });
+
+  // Q&A flow
+  function renderQuestion() {
+    const pct = (currentQ / questions.length) * 100;
+    progressBar.style.width = pct + '%';
+    qCounter.textContent = `Question ${currentQ + 1} of ${questions.length}`;
+    qText.textContent = questions[currentQ];
+    answerInput.value = '';
+    inlineEval.innerHTML = '';
+    btnNextRow.style.display = 'none';
+    answerInput.disabled = false;
+    btnSubmit.disabled = false;
+    btnSkip.disabled = false;
+  }
+
+  btnSkip.addEventListener('click', () => {
+    qaPairs.push({ question: questions[currentQ], answer: '(skipped)' });
+    advanceOrFinish();
+  });
+
+  btnSubmit.addEventListener('click', () => {
+    const answer = answerInput.value.trim();
+    if (!answer) return;
+    qaPairs.push({ question: questions[currentQ], answer });
+    advanceOrFinish();
+  });
+
+  btnNext.addEventListener('click', advanceOrFinish);
+
+  async function advanceOrFinish() {
+    currentQ++;
+    if (currentQ < questions.length) {
+      renderQuestion();
+    } else {
+      progressBar.style.width = '100%';
+      show('sec-report');
+      await runEvaluation();
+    }
+  }
+
+  async function runEvaluation() {
+    avgScoreBox.innerHTML = `<div style="color:#64748b"><span class="spinner"></span>&nbsp;Evaluating your answers…</div>`;
+    reportBody.innerHTML = '';
+    try {
+      const res = await fetch(`${API}/evaluate-all`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tech_name: resumeData.tech_name, qa_pairs: qaPairs }),
+      });
+      if (!res.ok) throw new Error('Evaluation failed');
+      const data = await res.json();
+      qaPairs = data.results;
+      renderReport(data.average_technical_accuracy);
+    } catch (e) {
+      avgScoreBox.innerHTML = `<p style="color:#f87171">❌ ${e.message}</p>`;
+    }
+  }
+
+  // Report
+  function renderReport(avg) {
+    avg = (avg !== undefined ? avg : 0).toFixed(2);
+
+    let color = '#f87171';
+    if (avg >= 4) color = '#34d399';
+    else if (avg >= 2.5) color = '#fbbf24';
+
+    avgScoreBox.innerHTML = `
+      <div class="big" style="color:${color}">${avg}<span style="font-size:1.5rem;color:#64748b">/5</span></div>
+      <div class="label">Average Technical Accuracy</div>
+    `;
+
+    reportBody.innerHTML = qaPairs.map((p, i) => {
+      const ev = p.evaluation;
+      if (!ev) {
+        return `<div class="report-item"><div class="report-q">Q${i+1}: ${p.question}</div><div class="report-a">Skipped</div></div>`;
+      }
+      const cls = (ev.verdict || '').toLowerCase();
+      const missingHtml = (ev.missing_points || []).length
+        ? `<ul class="missing-list">${ev.missing_points.map(m => `<li>${m}</li>`).join('')}</ul>` : '';
+      const errHtml = (ev.factual_errors || []).length
+        ? `<ul class="error-list">${ev.factual_errors.map(e => `<li>${e}</li>`).join('')}</ul>` : '';
+      return `
+        <div class="report-item ${cls}">
+          <div class="report-q">Q${i+1}: ${p.question}</div>
+          <div class="report-a">"${p.answer}"</div>
+          <div class="scores">
+            <div class="score-pill">Accuracy <span>${ev.technical_accuracy}/5</span></div>
+            <div class="score-pill">Completeness <span>${ev.completeness}/5</span></div>
+            <div class="score-pill">Clarity <span>${ev.clarity}/5</span></div>
+            <div class="score-pill verdict ${verdictClass(ev.verdict)}">${ev.verdict}</div>
+          </div>
+          <div class="feedback-text" style="margin-top:0.5rem">${ev.feedback || ''}</div>
+          ${missingHtml}${errHtml}
+        </div>`;
+    }).join('');
+  }
+
+  btnRestart.addEventListener('click', () => {
+    resumeData = {}; questions = []; currentQ = 0; qaPairs = [];
+    fileInput.value = ''; fileNameDisp.textContent = '';
+    btnUpload.disabled = true;
+    show('sec-upload');
+  });
+</script>
+</body>
+</html>
